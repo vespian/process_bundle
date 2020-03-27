@@ -86,7 +86,7 @@ def resources(bundle_dir):
         cpu_alloc_str = node_data["status"]["allocatable"]["cpu"]
         nodes_resources[node_name]["cpu_allocatable"] = convert_cpu_units(cpu_alloc_str)
         mem_alloc_str = node_data["status"]["allocatable"]["memory"]
-        nodes_resources[node_name]["memory_limit"] = convert_memory_units(mem_alloc_str)
+        nodes_resources[node_name]["memory_allocatable"] = convert_memory_units(mem_alloc_str)
 
     pods_resources = {}
     unallocated_pods = []
