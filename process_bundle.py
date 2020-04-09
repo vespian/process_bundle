@@ -5,8 +5,10 @@ import os
 import tarfile
 import pprint
 
+import json
 import click_pathlib
 
+from pathlib import Path
 from yaml import load, dump
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
@@ -36,25 +38,36 @@ def convert_cpu_units(cpu_string):
     else:
         return int(cpu_string)
 
+def convert_to_json(path):
+    if path.suffix != ".yaml" and path.suffix != ".yml":
+        return
+    path_json = path.with_suffix(".json")
+
+    print("      converting to JSON...")
+    data = load(path.read_bytes() , Loader=Loader)
+    path_json.write_text(json.dumps(data), encoding='utf8')
+
 
 @click.group()
 def cli():
     pass
 
 @cli.command()
-@click.option('--bundle-file', required=True, type=click_pathlib.Path(exists=True,dir_okay=False,file_okay=True,readable=True))
-@click.option('--output-dir', required=True, type=click_pathlib.Path(exists=False))
-def unpack(bundle_file, output_dir):
+@click.argument('bundle-file', nargs=1, required=True, type=click_pathlib.Path(exists=True,dir_okay=False,file_okay=True,readable=True))
+@click.option('--json-convert/--no-json-convert', default=True)
+def unpack(bundle_file, json_convert):
     click.echo(f'Unpacking the diagnostics bundle `{bundle_file}`')
 
     outer_tarfile = tarfile.open(bundle_file, 'r:*')
+    assert bundle_file.suffixes == ['.tar', '.gz']
+    output_dir = Path(str(bundle_file)[:-7])
 
     for outer_entry in outer_tarfile.getnames():
         click.echo(f"  - unpacking inner tarball {outer_entry}")
         filename = os.path.basename(outer_entry)
 
-        if not filename.endswith('.tar.gz'):
-            raise Exception("Changed bundle format?")
+        # Changed bundle format?
+        assert filename.endswith('.tar.gz')
 
         inner_dirname = output_dir / filename[:-7]
 
@@ -63,6 +76,8 @@ def unpack(bundle_file, output_dir):
         for inner_entry in inner_tarfile:
             click.echo(f"    - unpacking file {inner_entry.name}")
             inner_tarfile.extract(inner_entry.name, inner_dirname)
+            if json_convert:
+                convert_to_json(inner_dirname / inner_entry.name)
 
 
 @cli.command()
